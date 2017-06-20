@@ -69,28 +69,12 @@ class Communicator *comm = NULL;
 FileUtil fileUtil;
 Json::FastWriter fw;
 Json::Value root;
-  Sensor a(0);
-  Sensor a(1);
+Sensor a;
+Sensor b(ADXL345_ADDRESS_ALT_HIGH);
 
 void *worker(void *arguments);
 
 pthread_mutex_t qlock = PTHREAD_MUTEX_INITIALIZER;	
-
-class Sensor
-{
-public:
-    Sensor(int i);   //initialize the sensor with a index
-};
-
-
-Sensor::Sensor(int i):index(i)
-{
-	I2Cdev::initialize();
-	if(i == 0)
-		ADXL345 sensor;
-	else
-		ADXL345 sensor(ADXL345_ADDRESS_ALT_HIGH);
-}
 
 int main(int argc, char **argv) {
   
@@ -101,6 +85,8 @@ int main(int argc, char **argv) {
 //     fprintf(stderr, "ADXL345 connection test failed! exiting ...\n");
 //     return 1;
 //   }
+	a.initialize();
+	b.initialize();
    cout << "current data rate of sensor_1 is " << int(a.getRate())<< endl;
    cout << "current data rate of sensor_2 is " << int(b.getRate()) << endl;
    a.setRate(15);
@@ -160,7 +146,7 @@ a.getAcceleration(&x, &y, &z);
 //	publish to broker
 	comm->send_message(j);
 	pthread_mutex_lock(&qlock);
-	msg_count++;
+	msg_indext++;
 	pthread_mutex_unlock(&qlock);
 	return NULL;
   }
