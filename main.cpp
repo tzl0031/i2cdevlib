@@ -44,7 +44,7 @@ ${PATH_I2CDEVLIB}/Arduino/ADXL345/ADXL345.cpp -l bcm2835 -l m
       $ sudo ./ADXL345_example_1
 
 */
-
+#define _GNU_SOURCE
 #include "ADXL345.h"
 #include "Communicator.h"
 #include "I2Cdev.h"
@@ -56,6 +56,8 @@ ${PATH_I2CDEVLIB}/Arduino/ADXL345/ADXL345.cpp -l bcm2835 -l m
 #include <sys/time.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sched.h>
+#include <unistd.h>
 
 using namespace std;
 void *sensor_1(void *arg);
@@ -71,7 +73,7 @@ int numberOfSensor = 2;
 int data_rate = 15;
 int data_range = 0;
 ADXL345 a;
- ADXL345 b(ADXL345_ADDRESS_ALT_HIGH);
+ADXL345 b(ADXL345_ADDRESS_ALT_HIGH);
 
 
 int main(int argc, char **argv) {
@@ -98,8 +100,8 @@ int main(int argc, char **argv) {
 //    cout << "data range of sensor_2 after change" << int(b.getRange()) << endl;
 
   I2Cdev::initialize();
-	a.initialize();
-	b.initialize();
+  a.initialize();
+  b.initialize();
   comm = new Communicator("1", "192.168.1.115", 1883);
   gettimeofday(&start_t, NULL);
   printf("start time : %lld\n", start_t.tv_sec * (uint64_t)1000000+ start_t.tv_usec);
@@ -120,6 +122,30 @@ void *sensor_1(void *arg)
 Json::Value root;
 int16_t x, y, z;
 	long long diff;
+	int i, cpus =0;
+	cpu_set_t mask;
+	pu_set_t get;
+	
+     cpus = sysconf(_SC_NPROCESSORS_CONF);
+     printf("this system has %d processor(s)\n", cpus);
+     
+     CPU_ZERO(&mask);
+     for (i = 0; i < 4; i++) { /*将0、1、2、3添加到集合中*/
+         CPU_SET(i, &mask);
+     }   
+ 
+     /* 设置cpu 亲和性(affinity)*/
+     if (pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0) {
+         fprintf(stderr, "set thread affinity failed\n");
+     }   
+     
+     /* 查看cpu 亲和性(affinity)*/
+     CPU_ZERO(&get);
+     if (pthread_getaffinity_np(pthread_self(), sizeof(get), &get) < 0) {
+         fprintf(stderr, "get thread affinity failed\n");
+     }   
+ 
+	
 a.getAcceleration(&x, &y, &z);
   gettimeofday(&end_t, NULL);
   diff = (end_t.tv_sec - start_t.tv_sec) * (uint64_t)1000000 +
@@ -149,7 +175,29 @@ void *sensor_2(void *arg)
 Json::Value root;
  long long diff;
 int16_t x, y, z;
-a.getAcceleration(&x, &y, &z);
+ 	cpu_set_t mask;
+	pu_set_t get;
+	
+     cpus = sysconf(_SC_NPROCESSORS_CONF);
+     printf("this system has %d processor(s)\n", cpus);
+     
+     CPU_ZERO(&mask);
+     for (i = 0; i < 4; i++) { /*将0、1、2、3添加到集合中*/
+         CPU_SET(i, &mask);
+     }   
+ 
+     /* 设置cpu 亲和性(affinity)*/
+     if (pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0) {
+         fprintf(stderr, "set thread affinity failed\n");
+     }   
+     
+     /* 查看cpu 亲和性(affinity)*/
+     CPU_ZERO(&get);
+     if (pthread_getaffinity_np(pthread_self(), sizeof(get), &get) < 0) {
+         fprintf(stderr, "get thread affinity failed\n");
+     }   
+ 
+b.getAcceleration(&x, &y, &z);
   gettimeofday(&end_t, NULL);
   diff = (end_t.tv_sec - start_t.tv_sec) * (uint64_t)1000000 +
            (end_t.tv_usec - start_t.tv_usec);
